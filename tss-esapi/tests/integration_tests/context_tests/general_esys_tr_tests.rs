@@ -468,11 +468,11 @@ mod test_tr_serialize_tr_deserialize {
             .unwrap()
             .key_handle;
         let data = context.tr_serialize(key_handle.into()).unwrap();
-        let mut context = create_ctx_with_session();
-        let new_handle = context.tr_deserialize(data).unwrap().into();
+        let mut context2 = create_ctx_with_session();
+        let new_handle = context2.tr_deserialize(data).unwrap().into();
         assert_eq!(
             context.read_public(key_handle).unwrap(),
-            context.read_public(new_handle).unwrap()
+            context2.read_public(new_handle).unwrap()
         );
     }
 }
