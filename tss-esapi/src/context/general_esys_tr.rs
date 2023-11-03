@@ -468,7 +468,7 @@ impl Context {
     ///
     /// # Arguments
     /// * `buffer` - The buffer containing the data to restore the object.
-    ///              It can be created using `tr_serialize`.
+    ///              It can be created using [`tr_serialize`](Self::tr_serialize).
     ///
     /// # Returns
     /// A handle to the object that was created from the buffer.

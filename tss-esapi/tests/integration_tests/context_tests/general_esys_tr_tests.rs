@@ -481,7 +481,7 @@ mod test_tr_serialize_tr_deserialize {
             context.evict_control(Provision::Owner, key_handle.into(), persistent)?;
         let data = context.tr_serialize(persistent_handle)?;
 
-        std::mem::drop(context);
+        drop(context);
         // Load handle in a new context
         let mut new_context = create_ctx_without_session();
         let new_handle = new_context.tr_deserialize(&data)?.into();
