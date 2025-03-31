@@ -260,4 +260,9 @@ mod test_quote {
     fn checkquote_rsa_sha256() {
         checkquote_rsa(RsaKeyBits::Rsa3072, HashingAlgorithm::Sha256);
     }
+
+    #[test]
+    fn checkquote_rsa_sha384() {
+        checkquote_rsa(RsaKeyBits::Rsa3072, HashingAlgorithm::Sha384);
+    }
 }
