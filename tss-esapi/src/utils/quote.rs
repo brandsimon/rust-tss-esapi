@@ -323,7 +323,7 @@ pub fn checkquote(
                 ($curve: ty) => {
                     if parameters.ecc_curve() == <$curve>::TPM_CURVE {
                         let Signature::EcDsa(sig) = signature else {
-                            return Ok(false);
+                            return Err(Error::WrapperError(WrapperErrorKind::UnsupportedParam));
                         };
                         if !verify_ecdsa::<$curve>(&public, &bytes, &sig, sig.hashing_algorithm())?
                         {
@@ -351,7 +351,7 @@ pub fn checkquote(
         #[cfg(feature = "rsa")]
         (Public::Rsa { .. }, sig @ Signature::RsaSsa(pkcs_sig)) => {
             let Ok(sig) = pkcs1v15::Signature::try_from(sig.clone()) else {
-                return Ok(false);
+                return Err(Error::WrapperError(WrapperErrorKind::UnsupportedParam));
             };
 
             if !verify_rsa_pkcs1v15(public, &bytes, &sig, pkcs_sig.hashing_algorithm())? {
@@ -362,7 +362,7 @@ pub fn checkquote(
         #[cfg(feature = "rsa")]
         (Public::Rsa { .. }, sig @ Signature::RsaPss(pkcs_sig)) => {
             let Ok(sig) = pss::Signature::try_from(sig.clone()) else {
-                return Ok(false);
+                return Err(Error::WrapperError(WrapperErrorKind::UnsupportedParam));
             };
 
             if !verify_rsa_pss(public, &bytes, &sig, pkcs_sig.hashing_algorithm())? {
@@ -371,7 +371,7 @@ pub fn checkquote(
             hash_alg = Some(pkcs_sig.hashing_algorithm());
         }
         _ => {
-            return Ok(false);
+            return Err(Error::WrapperError(WrapperErrorKind::UnsupportedParam));
         }
     };
 
