@@ -45,7 +45,6 @@ where
         return Ok(false);
     };
     let Ok(public) = elliptic_curve::PublicKey::<C>::try_from(public) else {
-        println!("public convert failed");
         return Ok(false);
     };
 
@@ -326,16 +325,12 @@ pub fn checkquote(
                         let Signature::EcDsa(sig) = signature else {
                             return Ok(false);
                         };
-                        println!("hash_alg: {:?}", sig.hashing_algorithm());
-
                         if !verify_ecdsa::<$curve>(&public, &bytes, &sig, sig.hashing_algorithm())?
                         {
-                            println!("verification failed");
                             return Ok(false);
                         }
 
                         hash_alg = Some(sig.hashing_algorithm());
-                        println!("hash_alg: {hash_alg:?}");
                     }
                 };
             }
