@@ -125,22 +125,22 @@ fn verify_rsa_pkcs1v15(
     match hashing_algorithm {
         #[cfg(feature = "sha1")]
         HashingAlgorithm::Sha1 => {
-            let verifying_key = pkcs1v15::VerifyingKey::<sha1::Sha1>::from(rsa_key);
+            let verifying_key = pkcs1v15::VerifyingKey::<sha1::Sha1>::new(rsa_key);
             Ok(verifying_key.verify(message, signature).is_ok())
         }
         #[cfg(feature = "sha2")]
         HashingAlgorithm::Sha256 => {
-            let verifying_key = pkcs1v15::VerifyingKey::<sha2::Sha256>::from(rsa_key);
+            let verifying_key = pkcs1v15::VerifyingKey::<sha2::Sha256>::new(rsa_key);
             Ok(verifying_key.verify(message, signature).is_ok())
         }
         #[cfg(feature = "sha2")]
         HashingAlgorithm::Sha384 => {
-            let verifying_key = pkcs1v15::VerifyingKey::<sha2::Sha384>::from(rsa_key);
+            let verifying_key = pkcs1v15::VerifyingKey::<sha2::Sha384>::new(rsa_key);
             Ok(verifying_key.verify(message, signature).is_ok())
         }
         #[cfg(feature = "sha2")]
         HashingAlgorithm::Sha512 => {
-            let verifying_key = pkcs1v15::VerifyingKey::<sha2::Sha512>::from(rsa_key);
+            let verifying_key = pkcs1v15::VerifyingKey::<sha2::Sha512>::new(rsa_key);
             Ok(verifying_key.verify(message, signature).is_ok())
         }
         _ => {
