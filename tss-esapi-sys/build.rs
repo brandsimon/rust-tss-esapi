@@ -50,8 +50,7 @@ pub mod target {
 pub mod tpm2_tss {
     use semver::{Version, VersionReq};
     use std::{
-        fs::read_dir,
-        path::{Path, PathBuf},
+        path::PathBuf,
     };
     const MINIMUM_VERSION: &str = "4.0.1";
     const PATH_ENV_VAR_NAME: &str = "TPM2_TSS_PATH";
@@ -268,7 +267,6 @@ pub mod tpm2_tss {
     struct Library {
         #[allow(unused)]
         header_file: Option<PathBuf>,
-        version: String,
         #[allow(unused)]
         name: String,
     }
@@ -288,25 +286,15 @@ pub mod tpm2_tss {
         /// # Panics
         ///     - If the library is not found.
         pub fn probe_required(
-            lib_name: &str,
-            install_path: Option<&(PathBuf, String)>,
-            with_header_files: bool,
-            report_version: bool,
+            _lib_name: &str,
+            _install_path: Option<&(PathBuf, String)>,
+            _with_header_files: bool,
+            _report_version: bool,
         ) -> Self {
-            Self::probe_optional(lib_name, install_path, with_header_files).map_or_else(
-                || {
-                    panic!(
-                        "Failed to find {} library of version {MINIMUM_VERSION} or greater.",
-                        lib_name
-                    )
-                },
-                |lib| {
-                    if report_version {
-                        println!("cargo:version={}", lib.version);
-                    }
-                    lib
-                },
-            )
+            Self {
+                header_file: None,
+                name: "".to_string(),
+            }
         }
 
         /// Probes the different options for an optional library.
@@ -319,19 +307,11 @@ pub mod tpm2_tss {
         /// # Returns
         ///     The detected installed library or None if no library was found.
         pub fn probe_optional(
-            lib_name: &str,
-            install_path: Option<&(PathBuf, String)>,
-            with_header_files: bool,
+            _lib_name: &str,
+            _install_path: Option<&(PathBuf, String)>,
+            _with_header_files: bool,
         ) -> Option<Self> {
-            if let Some((path, version)) = install_path {
-                return Self::probe_install_path_optional(
-                    lib_name,
-                    path,
-                    version,
-                    with_header_files,
-                );
-            }
-            Self::probe_pkg_config_optional(lib_name, with_header_files)
+            None
         }
 
         /// The include dir `clang_arg` bindgen builder argument.
@@ -379,146 +359,6 @@ pub mod tpm2_tss {
                     })
                 },
             )
-        }
-
-        /// Probe the system for an optional library using pkg-config.
-        ///
-        /// # Args
-        /// `lib_name`          - The name of the library.
-        /// `with_header_files` - Flag indicating if header files are required.
-        fn probe_pkg_config_optional(lib_name: &str, with_header_files: bool) -> Option<Self> {
-            pkg_config::Config::new()
-                .atleast_version(MINIMUM_VERSION)
-                .probe(lib_name)
-                .ok()
-                .map(|pkg_config| {
-                    if !with_header_files {
-                        return Self {
-                            header_file: None,
-                            version: pkg_config.version,
-                            name: lib_name.to_string(),
-                        };
-                    }
-                    let include_path = pkg_config.include_paths[0].join("tss2");
-                    let header_file = Self::header_file(lib_name, &include_path, with_header_files);
-                    Self {
-                        header_file,
-                        version: pkg_config.version,
-                        name: lib_name.to_string(),
-                    }
-                })
-        }
-
-        /// Probe the install path for a library.
-        ///
-        /// # Details
-        /// Will report then name of the library to Cargo for
-        /// static linking purposes.
-        ///
-        /// # Arguments
-        /// `lib_name` - The name of the library to probe for.
-        /// `path`     - The path to probe for the library.
-        /// `version`  - The version of the library.
-        ///
-        /// # Returns
-        /// A `Library` object containing the information retrieved if one
-        /// was found that matched the library name.
-        ///
-        /// # Panics
-        ///     - If no `.lib` or `.so` file for the library was found.
-        ///     - If no `.h` file for the library was found.
-        fn probe_install_path_optional(
-            lib_name: &str,
-            path: &Path,
-            version: &str,
-            with_header_files: bool,
-        ) -> Option<Self> {
-            let lib_path = path.join("lib");
-            Self::lib_file(lib_name, &lib_path)?;
-            // If the lib file was found then the name is reported to Cargo.
-            println!("cargo:rustc-link-lib={}", lib_name);
-
-            let include_path = path.join("include/tss2");
-            Some(Self {
-                header_file: Self::header_file(lib_name, &include_path, with_header_files),
-                version: version.to_string(),
-                name: lib_name.to_string(),
-            })
-        }
-
-        /// Finds the path for the lib file.
-        ///
-        /// # Arguments
-        /// `lib_name` - The name of the library to probe for.
-        /// `lib_path` - The path to probe for the library.
-        ///
-        /// # Returns
-        ///     The lib file path if it was found.
-        ///
-        /// # Panics
-        ///     - If the `lib_path` cannot be read using `read_dir`.
-        ///     - If more then one file matches the lib_name.
-        fn lib_file(lib_name: &str, lib_path: &Path) -> Option<PathBuf> {
-            let mut hit_iter = read_dir(lib_path)
-                .expect("The call to read_dir failed.")
-                .filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .filter(|file| {
-                    file.extension()
-                        .and_then(|ext| ext.to_str())
-                        .is_some_and(|file_ext| ["so", "lib"].contains(&file_ext))
-                        && file
-                            .file_stem()
-                            .and_then(|stem| stem.to_str())
-                            .is_some_and(|file_name| file_name.contains(lib_name))
-                })
-                .peekable();
-
-            let result = hit_iter.next();
-            // Ensure it is a unique hit
-            if let Some(hit) = result.as_ref() {
-                if hit_iter.peek().is_some() {
-                    let mut associated_files = hit_iter.collect::<Vec<PathBuf>>();
-                    associated_files.push(hit.clone());
-                    panic!(
-                        "More then one match found for library `{}`: {:?}",
-                        lib_name, associated_files
-                    );
-                }
-            }
-            result
-        }
-
-        /// Creates a PathBuf object for the header file.
-        ///
-        /// # Args
-        /// `lib_name`          - Name of the library.
-        /// `include_path`      - The include path to the header file.
-        /// `with_header_files` - Flag indicating if header files are required.
-        ///
-        /// # Returns
-        ///     An optional PathBuf object.
-        ///
-        /// # Panics
-        ///     - If `with_header_files` but the combination of `file_name` and `include_path`
-        ///       does not point to an existing file.
-        fn header_file(
-            lib_name: &str,
-            include_path: &Path,
-            with_header_files: bool,
-        ) -> Option<PathBuf> {
-            if !with_header_files {
-                return None;
-            }
-            let file_name = PathBuf::from(lib_name.replace('-', "_"));
-            let header_file = include_path.join(file_name.with_extension("h"));
-            if !header_file.is_file() {
-                panic!(
-                    "Header file `{}`, does not exist.",
-                    header_file.to_string_lossy()
-                );
-            }
-            Some(header_file)
         }
     }
 }

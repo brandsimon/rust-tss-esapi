@@ -3,12 +3,6 @@
 use semver::{Version, VersionReq};
 
 fn main() {
-    println!("cargo:rustc-check-cfg=cfg(hierarchy_is_esys_tr)");
-    println!("cargo:rustc-check-cfg=cfg(has_tss_base_rc_values_28_to_51)");
-    println!("cargo:rustc-check-cfg=cfg(has_tss_base_rc_values_52_to_53)");
-    println!("cargo:rustc-check-cfg=cfg(has_tpmu_sensitive_create)");
-    println!("cargo:rustc-check-cfg=cfg(has_esys_tr_get_tpm_handle)");
-
     let tss_version_string = std::env::var("DEP_TSS2_ESYS_VERSION")
         .expect("Failed to parse ENV variable DEP_TSS2_ESYS_VERSION as string");
 
