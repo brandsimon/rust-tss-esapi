@@ -8,7 +8,7 @@ use crate::{
     structures::{Attest, AttestInfo, DigestList, PcrSelectionList, Public, QuoteInfo, Signature},
     traits::Marshall,
 };
-use digest::{Digest, DynDigest};
+use digest::Digest;
 
 #[cfg(any(feature = "p224", feature = "p256", feature = "p384"))]
 use crate::{abstraction::public::AssociatedTpmCurve, structures::EccSignature};
@@ -147,30 +147,17 @@ fn verify_rsa_pkcs1v15(
     }
 }
 
-fn checkquote_pcr_digests(
+fn checkquote_pcr_digest<D>(
     quote: &QuoteInfo,
     selections: &PcrSelectionList,
     digests: &DigestList,
-    hash_alg: HashingAlgorithm,
-) -> Result<bool> {
-    if selections != quote.pcr_selection() {
-        return Ok(false);
-    }
-    let digests_val = digests.value();
+) -> Result<bool>
+where
+    D: Digest,
+{
+    let mut hasher = D::new();
     let mut digest_pos = 0;
-    let mut hasher: Box<dyn DynDigest> = match hash_alg {
-        #[cfg(feature = "sha1")]
-        HashingAlgorithm::Sha1 => Box::new(sha1::Sha1::new()),
-        #[cfg(feature = "sha2")]
-        HashingAlgorithm::Sha256 => Box::new(sha2::Sha256::new()),
-        #[cfg(feature = "sha2")]
-        HashingAlgorithm::Sha384 => Box::new(sha2::Sha384::new()),
-        #[cfg(feature = "sha2")]
-        HashingAlgorithm::Sha512 => Box::new(sha2::Sha512::new()),
-        _ => {
-            return Err(Error::WrapperError(WrapperErrorKind::UnsupportedParam));
-        }
-    };
+    let digests_val = digests.value();
 
     for selection in selections.get_selections() {
         let sel_count = selection.selected().len();
@@ -187,6 +174,36 @@ fn checkquote_pcr_digests(
     }
     let digest = hasher.finalize();
     Ok(digest.as_ref() == quote.pcr_digest().as_ref())
+}
+
+fn checkquote_pcr_digests(
+    quote: &QuoteInfo,
+    selections: &PcrSelectionList,
+    digests: &DigestList,
+    hash_alg: HashingAlgorithm,
+) -> Result<bool> {
+    if selections != quote.pcr_selection() {
+        return Ok(false);
+    }
+    match hash_alg {
+        #[cfg(feature = "sha1")]
+        HashingAlgorithm::Sha1 => checkquote_pcr_digest::<sha1::Sha1>(quote, selections, digests),
+        #[cfg(feature = "sha2")]
+        HashingAlgorithm::Sha256 => {
+            checkquote_pcr_digest::<sha2::Sha256>(quote, selections, digests)
+        }
+        #[cfg(feature = "sha2")]
+        HashingAlgorithm::Sha384 => {
+            checkquote_pcr_digest::<sha2::Sha384>(quote, selections, digests)
+        }
+        #[cfg(feature = "sha2")]
+        HashingAlgorithm::Sha512 => {
+            checkquote_pcr_digest::<sha2::Sha512>(quote, selections, digests)
+        }
+        _ => {
+            return Err(Error::WrapperError(WrapperErrorKind::UnsupportedParam));
+        }
+    }
 }
 
 /// Verify a quote
